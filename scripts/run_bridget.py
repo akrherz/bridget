@@ -6,8 +6,7 @@ import sys
 import pytz
 import datetime
 import numpy as np
-
-(USERWIS, USEMODEL) = range(2)
+import subprocess
 
 def find_initts( nc ):
     ''' Provided the given netcdf file object, figure out the start time '''
@@ -23,11 +22,12 @@ def make_output(nc, initts):
     # Setup dimensions
     ncout.createDimension('i_cross', len(nc.dimensions['i_cross']))
     ncout.createDimension('j_cross', len(nc.dimensions['j_cross']))
-    ncout.createDimension('time', 72)
+    ncout.createDimension('time', 72*60)
 
     # Setup variables
     tm = ncout.createVariable('time', np.int, ('time',))
     tm.units = "minutes since %s" % (initts.strftime("%Y-%m-%d %H:%M:%S"),)
+    tm[:] = range(72*60)
     
     i_cross = ncout.createVariable('i_cross', np.float, ('i_cross',))
     i_cross.units = "m"
@@ -100,7 +100,11 @@ def make_output(nc, initts):
 
 
     ncout.close()
-    return netCDF4.Dataset(fn)
+    return netCDF4.Dataset(fn, 'a')
+
+def make_rwis():
+    ''' RWIS dummy file for now '''
+    return 'faux_rwis.txt'
 
 def run_model(nc, initts, ncout):
     ''' Actually run the model, please '''
@@ -116,9 +120,46 @@ def run_model(nc, initts, ncout):
     lats = nc.variables['latitcrs']
     lons = nc.variables['longicrs']
 
+    otmpk = ncout.variables['tmpk']
+
+    rwisfn = make_rwis()
+
     for i in range(len(nc.dimensions['i_cross'])):
         for j in range(len(nc.dimensions['j_cross'])):
-            pass
+            lat = lats[i,j]
+            lon = lons[i,j]
+
+            modelfp = open('modeldata.txt', 'w')
+            for t in range(1, len(nc.dimensions['time'])):
+                ts = initts + datetime.timedelta(minutes=int(tm[t]))
+                
+                modelfp.write("%s %6.1f %6.2f %7.6f %7.2f %7.2f %7.2f %7.4f\n"%( 
+                              ts.strftime("%Y-%m-%d_%H:%M:%S00"), tm[t],
+                              t2[t,i,j], q2[t,i,j], 
+                              (u10[t,i,j]**2 + v10[t,i,j]**2)**0.5,
+                              swdown[t,i,j], lwdown[t,i,j],
+                              rc[t,i,j] + rn[t,i,j]
+                              ))
+                
+            modelfp.close()
+            
+            proc = subprocess.Popen("./bridgemodel %s %s %s" % (rwisfn,
+                                                    "modeldata.txt", 
+                                                    "propertyFile"),
+                                    shell=True,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            sd = proc.stdout.read()
+
+            # Process the output file! 
+            for line in open('pavetemp.out'):
+                tokens = line.split()
+                if len(tokens) < 7:
+                    continue
+                ts = datetime.datetime.strptime(tokens[0], "%Y-%m-%d_%H:%M")
+                ts = ts.replace(tzinfo=pytz.timezone("UTC"))
+                t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60))
+                otmpk[t,i,j] = float(tokens[1])
 
 if __name__ == '__main__':
     ''' Do something please '''
