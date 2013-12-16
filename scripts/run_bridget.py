@@ -123,12 +123,22 @@ def run_model(nc, initts, ncout):
     otmpk = ncout.variables['tmpk']
 
     rwisfn = make_rwis()
-
+    #mini = 200
+    #minj = 200
+    #maxi = 0
+    #maxj = 0
     for i in range(len(nc.dimensions['i_cross'])):
         for j in range(len(nc.dimensions['j_cross'])):
             lat = lats[i,j]
             lon = lons[i,j]
-
+            '''Hey, we only care about Iowa data! -97 40 -90 43.75'''
+            if lat < 40 or lat > 43.75 or lon < -97 or lon > -90:
+                continue
+            #mini = min(i, mini)
+            #minj = min(j, minj)
+            #maxi = max(i, maxi)
+            #maxj = max(j, maxj)
+            #continue
             modelfp = open('modeldata.txt', 'w')
             for t in range(1, len(nc.dimensions['time'])):
                 ts = initts + datetime.timedelta(minutes=int(tm[t]))
@@ -160,6 +170,9 @@ def run_model(nc, initts, ncout):
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
                 t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60))
                 otmpk[t,i,j] = float(tokens[1])
+
+    # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
+    #print mini, minj, maxi, maxj #62 70 82 98
 
 if __name__ == '__main__':
     ''' Do something please '''
