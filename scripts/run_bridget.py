@@ -123,7 +123,7 @@ def make_rwis(i, j, initts, oldncout):
     # Generate the rwis.txt file
     ts0 = find_initts(oldncout)
     o = open('rwis.txt', 'w')
-    for tstep in range(1, len(oldncout.dimension['time']), 60):
+    for tstep in range(1, len(oldncout.dimensions['time']), 60):
         ts = ts0 + datetime.timedelta(
                                 minutes=int(oldncout.variables['time'][tstep]))
         if ts >= initts:
@@ -208,9 +208,10 @@ def find_last_output(initts):
     ''' See if we have a previous run on file, that can be used to spin up
     our current run '''
     for i in range(-12,-73,-12):
-        ts = initts - datetime.timedelta(hours=i)
+        ts = initts + datetime.timedelta(hours=i)
         testfn = 'output/%s_iaoutput.nc' % (ts.strftime("%Y%m%d%H%M"),)
         if os.path.isfile(testfn):
+            print '  Using %s as warmup values' % (testfn,)
             return netCDF4.Dataset(testfn, 'r')
     print 'Did not find a previous output, will use dummy RWIS data :('
     return None
