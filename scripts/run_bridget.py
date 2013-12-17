@@ -7,6 +7,11 @@ import pytz
 import datetime
 import numpy as np
 import subprocess
+from pyiem.datatypes import temperature
+import os
+
+IOFFSET = 62
+JOFFSET = 70
 
 def find_initts( nc ):
     ''' Provided the given netcdf file object, figure out the start time '''
@@ -105,8 +110,16 @@ def make_output(nc, initts):
 def make_rwis(i, j, initts, oldncout):
     ''' Generate spinup file '''
     if oldncout is None:
+        if not os.path.isfile('faux_rwis.txt'): # create one!
+            o = open('faux_rwis.txt', 'w')
+            for hr in range(-12,0,1):
+                o.write("%s     44      44     10\n" % (
+                 (initts + datetime.timedelta(hours=hr)).strftime("%Y%m%d%H%M"),))
+            o.close()
         return 'faux_rwis.txt'
 
+    i = i - IOFFSET
+    j = j - JOFFSET
     # Generate the rwis.txt file
     ts0 = find_initts(oldncout)
     o = open('rwis.txt', 'w')
@@ -116,9 +129,9 @@ def make_rwis(i, j, initts, oldncout):
         if ts >= initts:
             break
         o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
-                temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F"), 
-                temperature(oldncout.variables['bdeckt'][tstep,i,j], "K").value("F"), 
-                (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
+            temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F"), 
+            temperature(oldncout.variables['bdeckt'][tstep,i,j], "K").value("F"), 
+            (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
     
     o.close()
     return 'rwis.txt'
@@ -196,11 +209,23 @@ def find_last_output(initts):
     our current run '''
     for i in range(-12,-73,-12):
         ts = initts - datetime.timedelta(hours=i)
-        testfn = 'output/%s_output.nc' % (ts.strftime("%Y%m%d%H%M"),)
+        testfn = 'output/%s_iaoutput.nc' % (ts.strftime("%Y%m%d%H%M"),)
         if os.path.isfile(testfn):
             return netCDF4.Dataset(testfn, 'r')
     print 'Did not find a previous output, will use dummy RWIS data :('
     return None
+
+def downsize_output(initts):
+    ''' Subset the output file, so to save some space 66% actually '''
+    fn1 = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
+    fn2 = "output/%s_iaoutput.nc" % (initts.strftime("%Y%m%d%H%M"),)
+
+    cmd = "ncks -d i_cross,%s,82 -d j_cross,%s,98 %s %s" % (IOFFSET, JOFFSET,
+                                                            fn1, fn2)
+    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
+                         stdout=subprocess.PIPE)
+    data= p.stdout.read()
+    os.unlink(fn1)
 
 if __name__ == '__main__':
     ''' Do something please '''
@@ -211,6 +236,9 @@ if __name__ == '__main__':
     ncout = make_output(nc, initts)
     oldncout = find_last_output(initts)
     run_model(nc, initts, ncout, oldncout)
+    downsize_output( initts )
+    if os.path.isfile('faux_rwis.txt'):
+        os.unlink('faux_rwis.txt')
     
     nc.close()
     ncout.close()
