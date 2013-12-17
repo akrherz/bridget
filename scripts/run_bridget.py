@@ -220,7 +220,8 @@ def downsize_output(initts):
     ''' Subset the output file, so to save some space 66% actually '''
     fn1 = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
     fn2 = "output/%s_iaoutput.nc" % (initts.strftime("%Y%m%d%H%M"),)
-
+    if os.path.isfile(fn2):
+        os.unlink(fn2)
     cmd = "ncks -d i_cross,%s,82 -d j_cross,%s,98 %s %s" % (IOFFSET, JOFFSET,
                                                             fn1, fn2)
     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
