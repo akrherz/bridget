@@ -17,7 +17,7 @@ def find_initts( nc ):
 
 def make_output(nc, initts):
     ''' Generate an output file to hold our results '''
-    fn = '%s_output.nc' % (initts.strftime("%Y%m%d%H%M"),)
+    fn = 'output/%s_output.nc' % (initts.strftime("%Y%m%d%H%M"),)
     ncout = netCDF4.Dataset(fn, 'w')
     # Setup dimensions
     ncout.createDimension('i_cross', len(nc.dimensions['i_cross']))
@@ -102,11 +102,28 @@ def make_output(nc, initts):
     ncout.close()
     return netCDF4.Dataset(fn, 'a')
 
-def make_rwis():
-    ''' RWIS dummy file for now '''
-    return 'faux_rwis.txt'
+def make_rwis(i, j, initts, oldncout):
+    ''' Generate spinup file '''
+    if oldncout is None:
+        return 'faux_rwis.txt'
 
-def run_model(nc, initts, ncout):
+    # Generate the rwis.txt file
+    ts0 = find_initts(oldncout)
+    o = open('rwis.txt', 'w')
+    for tstep in range(1, len(oldncout.dimension['time']), 60):
+        ts = ts0 + datetime.timedelta(
+                                minutes=int(oldncout.variables['time'][tstep]))
+        if ts >= initts:
+            break
+        o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
+                temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F"), 
+                temperature(oldncout.variables['bdeckt'][tstep,i,j], "K").value("F"), 
+                (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
+    
+    o.close()
+    return 'rwis.txt'
+
+def run_model(nc, initts, ncout, oldncout):
     ''' Actually run the model, please '''
     t2 = nc.variables['t2']
     u10 = nc.variables['u10']
@@ -122,7 +139,6 @@ def run_model(nc, initts, ncout):
 
     otmpk = ncout.variables['tmpk']
 
-    rwisfn = make_rwis()
     #mini = 200
     #minj = 200
     #maxi = 0
@@ -134,6 +150,7 @@ def run_model(nc, initts, ncout):
             '''Hey, we only care about Iowa data! -97 40 -90 43.75'''
             if lat < 40 or lat > 43.75 or lon < -97 or lon > -90:
                 continue
+            rwisfn = make_rwis(i, j, initts, oldncout)
             #mini = min(i, mini)
             #minj = min(j, minj)
             #maxi = max(i, maxi)
@@ -174,6 +191,17 @@ def run_model(nc, initts, ncout):
     # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
     #print mini, minj, maxi, maxj #62 70 82 98
 
+def find_last_output(initts):
+    ''' See if we have a previous run on file, that can be used to spin up
+    our current run '''
+    for i in range(-12,-73,-12):
+        ts = initts - datetime.timedelta(hours=i)
+        testfn = 'output/%s_output.nc' % (ts.strftime("%Y%m%d%H%M"),)
+        if os.path.isfile(testfn):
+            return netCDF4.Dataset(testfn, 'r')
+    print 'Did not find a previous output, will use dummy RWIS data :('
+    return None
+
 if __name__ == '__main__':
     ''' Do something please '''
     fn = sys.argv[1]
@@ -181,7 +209,8 @@ if __name__ == '__main__':
     
     initts = find_initts( nc )
     ncout = make_output(nc, initts)
-    run_model(nc, initts, ncout)
+    oldncout = find_last_output(initts)
+    run_model(nc, initts, ncout, oldncout)
     
     nc.close()
     ncout.close()
