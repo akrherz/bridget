@@ -227,7 +227,9 @@ def downsize_output(initts):
     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
                          stdout=subprocess.PIPE)
     data= p.stdout.read()
-    os.unlink(fn1)
+    # Make sure fn2 exists before deleting the old one
+    if os.path.isfile(fn2):
+        os.unlink(fn1)
 
 if __name__ == '__main__':
     ''' Do something please '''
