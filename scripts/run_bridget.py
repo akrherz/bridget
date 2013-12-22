@@ -151,7 +151,15 @@ def run_model(nc, initts, ncout, oldncout):
     lons = nc.variables['longicrs']
 
     otmpk = ncout.variables['tmpk']
-
+    owmps = ncout.variables['wmps']
+    oswout = ncout.variables['swout']
+    olwout = ncout.variables['lwout']
+    oh = ncout.variables['h']
+    olf = ncout.variables['lf']
+    obdeckt = ncout.variables['bdeckt']
+    oifrost = ncout.variables['ifrost']
+    odwpk = ncout.variables['dwpk']
+    ofrostd = ncout.variables['frostd']
     #mini = 200
     #minj = 200
     #maxi = 0
@@ -200,7 +208,17 @@ def run_model(nc, initts, ncout, oldncout):
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
                 t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60))
                 otmpk[t,i,j] = float(tokens[1])
-
+                owmps[t,i,j] = float(tokens[2])
+                oswout[t,i,j] = float(tokens[3])
+                olwout[t,i,j] = float(tokens[4])
+                oh[t,i,j] = float(tokens[5])
+                olf[t,i,j] = float(tokens[6])
+                if tokens[7] != "nan":
+                    obdeckt[t,i,j] = float(tokens[7])
+                if float(tokens[8]) > 0:
+                    oifrost[t,i,j] = 1
+                ofrostd[t,i,j] = float(tokens[8])
+                odwpk[t,i,j] = float(tokens[9])
     # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
     #print mini, minj, maxi, maxj #62 70 82 98
 
