@@ -150,21 +150,24 @@ def run_model(nc, initts, ncout, oldncout):
     lats = nc.variables['latitcrs']
     lons = nc.variables['longicrs']
 
-    otmpk = ncout.variables['tmpk']
-    owmps = ncout.variables['wmps']
-    oswout = ncout.variables['swout']
-    olwout = ncout.variables['lwout']
-    oh = ncout.variables['h']
-    olf = ncout.variables['lf']
-    obdeckt = ncout.variables['bdeckt']
-    oifrost = ncout.variables['ifrost']
-    odwpk = ncout.variables['dwpk']
-    ofrostd = ncout.variables['frostd']
+    shp = (len(ncout.dimensions['time']), len(ncout.dimensions['i_cross']), 
+           len(ncout.dimensions['j_cross']),)
+    otmpk = np.zeros( shp, 'f')
+    owmps = np.zeros( shp, 'f')
+    oswout = np.zeros( shp, 'f')
+    olwout = np.zeros( shp, 'f')
+    oh = np.zeros( shp, 'f')
+    olf = np.zeros( shp, 'f')
+    obdeckt = np.zeros( shp, 'f')
+    oifrost = np.zeros( shp, 'f')
+    odwpk = np.zeros( shp, 'f')
+    ofrostd = np.zeros( shp, 'f')
     #mini = 200
     #minj = 200
     #maxi = 0
     #maxj = 0
     for i in range(len(nc.dimensions['i_cross'])):
+        #loopstart = datetime.datetime.now()
         for j in range(len(nc.dimensions['j_cross'])):
             lat = lats[i,j]
             lon = lons[i,j]
@@ -219,6 +222,21 @@ def run_model(nc, initts, ncout, oldncout):
                     oifrost[t,i,j] = 1
                 ofrostd[t,i,j] = float(tokens[8])
                 odwpk[t,i,j] = float(tokens[9])
+    
+        #loopend = datetime.datetime.now()
+        #print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
+        #                                   (loopend-loopstart).seconds) 
+    
+    ncout.variables['tmpk'][:] = otmpk
+    ncout.variables['wmps'][:] = owmps
+    ncout.variables['swout'][:] = oswout
+    ncout.variables['lwout'][:] = olwout
+    ncout.variables['h'][:] = oh
+    ncout.variables['lf'][:] = olf
+    ncout.variables['bdeckt'][:] = obdeckt
+    ncout.variables['ifrost'][:] = oifrost
+    ncout.variables['frostd'][:] = ofrostd
+    ncout.variables['dwpk'][:] = odwpk
     # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
     #print mini, minj, maxi, maxj #62 70 82 98
 
