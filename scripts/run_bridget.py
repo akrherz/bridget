@@ -209,6 +209,8 @@ def run_model(nc, initts, ncout, oldncout):
                     continue
                 ts = datetime.datetime.strptime(tokens[0], "%Y-%m-%d_%H:%M")
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
+                if ts < initts:
+                    continue
                 t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60))
                 otmpk[t,i,j] = float(tokens[1])
                 owmps[t,i,j] = float(tokens[2])
