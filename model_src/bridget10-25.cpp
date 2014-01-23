@@ -698,7 +698,7 @@ float bridgelevels (float radiation, float latentHeat, float tempSfc,
        temperature[19][t] =  (2 / M) * (h * length / kbridge * tempAir +
                               temperature[18][t-1]) + (1 - (2 * N)) * temperature[19][t-1];      
 	      
-       if ( t > 0 && fabs(temperature[0][t-1] - temperature[0][t]) > 8 )
+       if ( t > 0 && fabs(temperature[0][t-1] - temperature[0][t]) > 48 )
        {
           cerr << "  heating/cooling rate too high.  check inputs  "<< 
                temperature[0][t-1] <<"  "<<temperature[0][t] << "  "<<t<<endl;
