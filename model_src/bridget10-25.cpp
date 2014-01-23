@@ -642,7 +642,7 @@ float bridgelevels (float radiation, float latentHeat, float tempSfc,
     float N ;
     N = (1+(h*length/kbridge)) / M ;
     float dummy[6] = {0};// useless floats to pass to function "initialize"
-    static float temperature[20][3000];
+    static float temperature[20][5000];
 
     if ( N > 0.5 )
     {
@@ -651,9 +651,9 @@ float bridgelevels (float radiation, float latentHeat, float tempSfc,
        //cause noticable effects. setting N to the largest stable number 
        N = 0.499;
     }
-    if ( t > 3000 )
+    if ( t > 5000 )
     {
-       cerr << " file will be shortened to 3000 minutes " << endl;
+       cerr << " file will be shortened to 5000 minutes " << endl;
        exit( 31 );
     }
 
