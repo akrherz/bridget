@@ -12,6 +12,7 @@ import os
 
 IOFFSET = 62
 JOFFSET = 70
+CONDITIONS = ['Dry', 'frosty', 'Icy/Snowy', 'Melting', 'Freezing', 'Wet']
 
 def find_initts( nc ):
     ''' Provided the given netcdf file object, figure out the start time '''
@@ -27,12 +28,12 @@ def make_output(nc, initts):
     # Setup dimensions
     ncout.createDimension('i_cross', len(nc.dimensions['i_cross']))
     ncout.createDimension('j_cross', len(nc.dimensions['j_cross']))
-    ncout.createDimension('time', 72*60)
+    ncout.createDimension('time', 72*4+1)
 
     # Setup variables
     tm = ncout.createVariable('time', np.int, ('time',))
     tm.units = "minutes since %s" % (initts.strftime("%Y-%m-%d %H:%M:%S"),)
-    tm[:] = range(72*60)
+    tm[:] = range(0,72*60+1,15)
     
     i_cross = ncout.createVariable('i_cross', np.float, ('i_cross',))
     i_cross.units = "m"
@@ -52,70 +53,72 @@ def make_output(nc, initts):
     lon.units = "degrees_east"
     lon[:] = nc.variables['longicrs'][:]
 
-    bdeckt = ncout.createVariable('bdeckt', np.float, 
-                                  ('time', 'i_cross', 'j_cross'))
+    ''' DEFINE THE VARS, PLEASE! '''
+    dims = ('time', 'i_cross', 'j_cross')
+    icond = ncout.createVariable('icond', np.byte, dims)
+    icond.coordinates = "lon lat"
+    icond.long_name = "Pavement Textual Condition"
+    icond.value0 = 'Dry'
+    icond.value1 = 'frosty'
+    icond.value2 = 'Icy/Snowy'
+    icond.value3 = 'Melting'
+    icond.value4 = 'Freezing'
+    icond.value5 = 'Wet'
+        
+    bdeckt = ncout.createVariable('bdeckt', np.float, dims)
     bdeckt.coordinates = "lon lat"
     bdeckt.units = "K"
     bdeckt.long_name = 'Bridge Deck Temperature'
 
-    h = ncout.createVariable('h', np.float, 
-                                  ('time', 'i_cross', 'j_cross'))
+    h = ncout.createVariable('h', np.float, dims)
     h.coordinates = "lon lat"
     #h.units = "m"
     #h.long_name = 'Depth of Frost'
 
-    swout = ncout.createVariable('swout', np.float, 
-                                  ('time', 'i_cross', 'j_cross'))
+    swout = ncout.createVariable('swout', np.float, dims)
     swout.coordinates = "lon lat"
     swout.units = "W m s-2"
     swout.long_name = 'Shortwave outgoing'
 
-    lwout = ncout.createVariable('lwout', np.float, 
-                                  ('time', 'i_cross', 'j_cross'))
+    lwout = ncout.createVariable('lwout', np.float, dims)
     lwout.coordinates = "lon lat"
     lwout.units = "W m s-2"
     lwout.long_name = 'Longwave outgoing'
 
-    lf = ncout.createVariable('lf', np.float, 
-                               ('time', 'i_cross', 'j_cross'))
+    lf = ncout.createVariable('lf', np.float, dims)
     lf.coordinates = "lon lat"
 
-    tmpk = ncout.createVariable('tmpk', np.float, 
-                                 ('time', 'i_cross', 'j_cross'))
+    tmpk = ncout.createVariable('tmpk', np.float, dims)
     tmpk.coordinates = "lon lat"
     tmpk.units = 'K'
 
-    dwpk = ncout.createVariable('dwpk', np.float, 
-                                 ('time', 'i_cross', 'j_cross'))
+    dwpk = ncout.createVariable('dwpk', np.float, dims)
     dwpk.coordinates = "lon lat"
 
-    wmps = ncout.createVariable('wmps', np.float, 
-                                ('time', 'i_cross', 'j_cross'))
+    wmps = ncout.createVariable('wmps', np.float, dims)
     wmps.coordinates = "lon lat"
   
-    ifrost = ncout.createVariable('ifrost', np.int, 
-                                  ('time', 'i_cross', 'j_cross'))
+    ifrost = ncout.createVariable('ifrost', np.int, dims)
     ifrost.coordinates = "lon lat"
     ifrost.missing_value = 0
 
-    frostd = ncout.createVariable('frostd', np.float, 
-                                  ('time', 'i_cross', 'j_cross'))
+    frostd = ncout.createVariable('frostd', np.float, dims)
     frostd.coordinates = "lon lat"
     frostd.missing_value = -99.
-
 
     ncout.close()
     return netCDF4.Dataset(fn, 'a')
 
-def make_rwis(i, j, initts, oldncout):
+def make_rwis(i, j, initts, oldncout, modeltemp):
     ''' Generate spinup file '''
     if oldncout is None:
-        if not os.path.isfile('faux_rwis.txt'): # create one!
-            o = open('faux_rwis.txt', 'w')
-            for hr in range(-12,0,1):
-                o.write("%s     44      44     10\n" % (
-                 (initts + datetime.timedelta(hours=hr)).strftime("%Y%m%d%H%M"),))
-            o.close()
+        o = open('faux_rwis.txt', 'w')
+        for hr in range(-12,0,1):
+            o.write("%s     %.3f      %.3f     10\n" % (
+             (initts + datetime.timedelta(hours=hr)).strftime("%Y%m%d%H%M"),
+             temperature(modeltemp, 'K').value('F') + 5, 
+             temperature(modeltemp, 'K').value('F') + 5))
+        o.close()
         return 'faux_rwis.txt'
 
     i = i - IOFFSET
@@ -123,7 +126,7 @@ def make_rwis(i, j, initts, oldncout):
     # Generate the rwis.txt file
     ts0 = find_initts(oldncout)
     o = open('rwis.txt', 'w')
-    for tstep in range(1, len(oldncout.dimensions['time']), 60):
+    for tstep in range(0, len(oldncout.dimensions['time']), 4):
         ts = ts0 + datetime.timedelta(
                                 minutes=int(oldncout.variables['time'][tstep]))
         if ts >= initts:
@@ -162,11 +165,16 @@ def run_model(nc, initts, ncout, oldncout):
     oifrost = np.zeros( shp, 'f')
     odwpk = np.zeros( shp, 'f')
     ofrostd = np.zeros( shp, 'f')
+    oicond = np.zeros( shp, 'f')
     #mini = 200
     #minj = 200
     #maxi = 0
     #maxj = 0
+    errorcount = 0
     for i in range(len(nc.dimensions['i_cross'])):
+        if errorcount > 100:
+            print 'Too many errors, aborting....'
+            sys.exit()
         #loopstart = datetime.datetime.now()
         for j in range(len(nc.dimensions['j_cross'])):
             lat = lats[i,j]
@@ -174,7 +182,7 @@ def run_model(nc, initts, ncout, oldncout):
             '''Hey, we only care about Iowa data! -97 40 -90 43.75'''
             if lat < 40 or lat > 43.75 or lon < -97 or lon > -90:
                 continue
-            rwisfn = make_rwis(i, j, initts, oldncout)
+            rwisfn = make_rwis(i, j, initts, oldncout, t2[1,i,j])
             #mini = min(i, mini)
             #minj = min(j, minj)
             #maxi = max(i, maxi)
@@ -200,8 +208,13 @@ def run_model(nc, initts, ncout, oldncout):
                                     shell=True,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
-            sd = proc.stdout.read()
-
+            se = proc.stderr.read()
+            if se != "":
+                errorcount += 1
+                print 'bridgemodel error i:%03i j:%03i stderr:|%s|' % (i, j, 
+                                                            se.strip())
+                sys.exit()
+                continue
             # Process the output file! 
             for line in open('pavetemp.out'):
                 tokens = line.split()
@@ -209,9 +222,9 @@ def run_model(nc, initts, ncout, oldncout):
                     continue
                 ts = datetime.datetime.strptime(tokens[0], "%Y-%m-%d_%H:%M")
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
-                if ts < initts:
+                if ts.minute not in (0,15,30,45) or ts < initts:
                     continue
-                t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60))
+                t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60)) / 15
                 otmpk[t,i,j] = float(tokens[1])
                 owmps[t,i,j] = float(tokens[2])
                 oswout[t,i,j] = float(tokens[3])
@@ -224,11 +237,11 @@ def run_model(nc, initts, ncout, oldncout):
                     oifrost[t,i,j] = 1
                 ofrostd[t,i,j] = float(tokens[8])
                 odwpk[t,i,j] = float(tokens[9])
+                oicond[t,i,j] = CONDITIONS.index( tokens[-1].strip() )
     
         #loopend = datetime.datetime.now()
         #print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
         #                                   (loopend-loopstart).seconds) 
-    
     ncout.variables['tmpk'][:] = otmpk
     ncout.variables['wmps'][:] = owmps
     ncout.variables['swout'][:] = oswout
@@ -239,6 +252,7 @@ def run_model(nc, initts, ncout, oldncout):
     ncout.variables['ifrost'][:] = oifrost
     ncout.variables['frostd'][:] = ofrostd
     ncout.variables['dwpk'][:] = odwpk
+    ncout.variables['icond'][:] = oicond
     # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
     #print mini, minj, maxi, maxj #62 70 82 98
 
@@ -278,9 +292,10 @@ if __name__ == '__main__':
     ncout = make_output(nc, initts)
     oldncout = find_last_output(initts)
     run_model(nc, initts, ncout, oldncout)
+    ncout.close()
+    nc.close()
     downsize_output( initts )
     if os.path.isfile('faux_rwis.txt'):
         os.unlink('faux_rwis.txt')
     
-    nc.close()
-    ncout.close()
+    
