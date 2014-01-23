@@ -131,8 +131,11 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
                                 minutes=int(oldncout.variables['time'][tstep]))
         if ts >= initts:
             break
+        tmpf = temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F")
+        if tmpf < -50 or tmpf > 150:
+            continue
         o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
-            temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F"), 
+            tmpf, 
             temperature(oldncout.variables['bdeckt'][tstep,i,j], "K").value("F"), 
             (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
     
