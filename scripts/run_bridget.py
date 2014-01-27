@@ -251,8 +251,7 @@ def run_model(nc, initts, ncout, oldncout):
                 olf[t, i, j] = float(tokens[6])
                 if tokens[7] != "nan":
                     obdeckt[t, i, j] = float(tokens[7])
-                if float(tokens[8]) > 0:
-                    oifrost[t, i, j] = 1
+                oifrost[t, i, j] = 1 if float(tokens[8]) > 0 else 0
                 ofrostd[t, i, j] = float(tokens[8])
                 odwpk[t, i, j] = float(tokens[9])
                 oicond[t, i, j] = CONDITIONS.index( tokens[-1].strip() )
