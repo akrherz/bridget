@@ -6,6 +6,7 @@ import sys
 import pytz
 import datetime
 import numpy as np
+import numpy.ma as ma
 import subprocess
 from pyiem.datatypes import temperature
 import os
@@ -70,42 +71,52 @@ def make_output(nc, initts):
     bdeckt.coordinates = "lon lat"
     bdeckt.units = "K"
     bdeckt.long_name = 'Bridge Deck Temperature'
+    bdeckt.missing_value = np.array(1e20, bdeckt.dtype)
 
     h = ncout.createVariable('h', np.float, dims)
     h.coordinates = "lon lat"
     #h.units = "m"
     #h.long_name = 'Depth of Frost'
+    h.missing_value = np.array(1e20, h.dtype)
 
     swout = ncout.createVariable('swout', np.float, dims)
     swout.coordinates = "lon lat"
     swout.units = "W m s-2"
     swout.long_name = 'Shortwave outgoing'
+    swout.missing_value = np.array(1e20, swout.dtype)
 
     lwout = ncout.createVariable('lwout', np.float, dims)
     lwout.coordinates = "lon lat"
     lwout.units = "W m s-2"
     lwout.long_name = 'Longwave outgoing'
+    lwout.missing_value = np.array(1e20, lwout.dtype)
 
     lf = ncout.createVariable('lf', np.float, dims)
     lf.coordinates = "lon lat"
+    lf.missing_value = np.array(1e20, lf.dtype)
 
     tmpk = ncout.createVariable('tmpk', np.float, dims)
     tmpk.coordinates = "lon lat"
     tmpk.units = 'K'
+    tmpk.missing_value = np.array(1e20, tmpk.dtype)
 
     dwpk = ncout.createVariable('dwpk', np.float, dims)
     dwpk.coordinates = "lon lat"
+    dwpk.missing_value = np.array(1e20, dwpk.dtype)
 
     wmps = ncout.createVariable('wmps', np.float, dims)
     wmps.coordinates = "lon lat"
-  
+    wmps.missing_value = np.array(1e20, wmps.dtype)
+
     ifrost = ncout.createVariable('ifrost', np.int, dims)
     ifrost.coordinates = "lon lat"
     ifrost.missing_value = 0
+    ifrost.missing_value = -1
 
     frostd = ncout.createVariable('frostd', np.float, dims)
     frostd.coordinates = "lon lat"
     frostd.missing_value = -99.
+    frostd.missing_value = np.array(1e20, frostd.dtype)
 
     ncout.close()
     return netCDF4.Dataset(fn, 'a')
@@ -157,19 +168,18 @@ def run_model(nc, initts, ncout, oldncout):
     lats = nc.variables['latitcrs']
     lons = nc.variables['longicrs']
 
-    shp = (len(ncout.dimensions['time']), len(ncout.dimensions['i_cross']), 
-           len(ncout.dimensions['j_cross']),)
-    otmpk = np.zeros( shp, 'f')
-    owmps = np.zeros( shp, 'f')
-    oswout = np.zeros( shp, 'f')
-    olwout = np.zeros( shp, 'f')
-    oh = np.zeros( shp, 'f')
-    olf = np.zeros( shp, 'f')
-    obdeckt = np.zeros( shp, 'f')
-    oifrost = np.zeros( shp, 'f')
-    odwpk = np.zeros( shp, 'f')
-    ofrostd = np.zeros( shp, 'f')
-    oicond = np.zeros( shp, 'f')
+    # keep masking in-tact as we only write data below when we have it
+    otmpk = ma.array(ncout.variables['tmpk'][:])
+    owmps = ma.array(ncout.variables['wmps'][:])
+    oswout = ma.array(ncout.variables['swout'][:])
+    olwout = ma.array(ncout.variables['lwout'][:])
+    oh = ma.array(ncout.variables['h'][:])
+    olf = ma.array(ncout.variables['lf'][:])
+    obdeckt = ma.array(ncout.variables['bdeckt'][:])
+    oifrost = ma.array(ncout.variables['ifrost'][:])
+    odwpk = ma.array(ncout.variables['dwpk'][:])
+    ofrostd = ma.array(ncout.variables['frostd'][:])
+    oicond = ma.array(ncout.variables['icond'][:])
     #mini = 200
     #minj = 200
     #maxi = 0
