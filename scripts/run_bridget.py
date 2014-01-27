@@ -125,7 +125,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
     ''' Generate spinup file '''
     if oldncout is None:
         o = open('faux_rwis.txt', 'w')
-        for hr in range(-12,0,1):
+        for hr in range(-12, 0, 1):
             o.write("%s     %.3f      %.3f     10\n" % (
              (initts + datetime.timedelta(hours=hr)).strftime("%Y%m%d%H%M"),
              temperature(modeltemp, 'K').value('F') + 5, 
@@ -143,12 +143,14 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
                                 minutes=int(oldncout.variables['time'][tstep]))
         if ts >= initts:
             break
-        tmpf = temperature(oldncout.variables['tmpk'][tstep,i,j], 'K').value("F")
+        tmpf = temperature(oldncout.variables['tmpk'][tstep,i,j], 
+                           'K').value("F")
         if tmpf < -50 or tmpf > 150:
             continue
         o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
             tmpf, 
-            temperature(oldncout.variables['bdeckt'][tstep,i,j], "K").value("F"), 
+            temperature(oldncout.variables['bdeckt'][tstep,i,j], 
+                        "K").value("F"), 
             (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
     
     o.close()
@@ -206,7 +208,8 @@ def run_model(nc, initts, ncout, oldncout):
             for t in range(1, len(nc.dimensions['time'])):
                 ts = initts + datetime.timedelta(minutes=int(tm[t]))
                 
-                modelfp.write("%s %6.1f %6.2f %7.6f %7.2f %7.2f %7.2f %7.4f\n"%( 
+                modelfp.write(("%s %6.1f %6.2f %7.6f %7.2f %7.2f "
+                               +"%7.2f %7.4f\n") % ( 
                               ts.strftime("%Y-%m-%d_%H:%M:%S00"), tm[t],
                               t2[t,i,j], q2[t,i,j], 
                               (u10[t,i,j]**2 + v10[t,i,j]**2)**0.5,
@@ -238,20 +241,21 @@ def run_model(nc, initts, ncout, oldncout):
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
                 if ts.minute not in (0,15,30,45) or ts < initts:
                     continue
-                t = int((ts - initts).days * 1400 + ((ts - initts).seconds / 60)) / 15
-                otmpk[t,i,j] = float(tokens[1])
-                owmps[t,i,j] = float(tokens[2])
-                oswout[t,i,j] = float(tokens[3])
-                olwout[t,i,j] = float(tokens[4])
-                oh[t,i,j] = float(tokens[5])
-                olf[t,i,j] = float(tokens[6])
+                t = int((ts - initts).days * 1400 + (
+                                            (ts - initts).seconds / 60)) / 15
+                otmpk[t, i, j] = float(tokens[1])
+                owmps[t, i, j] = float(tokens[2])
+                oswout[t, i, j] = float(tokens[3])
+                olwout[t, i, j] = float(tokens[4])
+                oh[t, i, j] = float(tokens[5])
+                olf[t, i, j] = float(tokens[6])
                 if tokens[7] != "nan":
-                    obdeckt[t,i,j] = float(tokens[7])
+                    obdeckt[t, i, j] = float(tokens[7])
                 if float(tokens[8]) > 0:
-                    oifrost[t,i,j] = 1
-                ofrostd[t,i,j] = float(tokens[8])
-                odwpk[t,i,j] = float(tokens[9])
-                oicond[t,i,j] = CONDITIONS.index( tokens[-1].strip() )
+                    oifrost[t, i, j] = 1
+                ofrostd[t, i, j] = float(tokens[8])
+                odwpk[t, i, j] = float(tokens[9])
+                oicond[t, i, j] = CONDITIONS.index( tokens[-1].strip() )
     
         #loopend = datetime.datetime.now()
         #print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
@@ -267,7 +271,8 @@ def run_model(nc, initts, ncout, oldncout):
     ncout.variables['frostd'][:] = ofrostd
     ncout.variables['dwpk'][:] = odwpk
     ncout.variables['icond'][:] = oicond
-    # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 201312131200_output2.nc
+    # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc 
+    # 201312131200_output2.nc
     #print mini, minj, maxi, maxj #62 70 82 98
 
 def find_last_output(initts):
@@ -294,7 +299,7 @@ def downsize_output(initts):
                                                             fn1, fn2)
     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
                          stdout=subprocess.PIPE)
-    data = p.stdout.read()
+    p.stdout.read()
     # Make sure fn2 exists before deleting the old one
     if os.path.isfile(fn2):
         os.unlink(fn1)
