@@ -9,6 +9,7 @@ import numpy as np
 import subprocess
 from pyiem.datatypes import temperature
 import os
+import shutil
 
 IOFFSET = 62
 JOFFSET = 70
@@ -275,16 +276,21 @@ def downsize_output(initts):
     ''' Subset the output file, so to save some space 66% actually '''
     fn1 = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
     fn2 = "output/%s_iaoutput.nc" % (initts.strftime("%Y%m%d%H%M"),)
+    fn3 = "/mesonet/share/frost/%s_iaoutput.nc" % (
+                                                initts.strftime("%Y%m%d%H%M"),)
     if os.path.isfile(fn2):
         os.unlink(fn2)
     cmd = "ncks -d i_cross,%s,82 -d j_cross,%s,98 %s %s" % (IOFFSET, JOFFSET,
                                                             fn1, fn2)
     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
                          stdout=subprocess.PIPE)
-    data= p.stdout.read()
+    data = p.stdout.read()
     # Make sure fn2 exists before deleting the old one
     if os.path.isfile(fn2):
         os.unlink(fn1)
+        print '    Copy %s to %s' % (fn2, fn3)
+        shutil.copyfile(fn2, fn3)
+    
 
 if __name__ == '__main__':
     ''' Do something please '''
