@@ -145,7 +145,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
             break
         tmpf = temperature(oldncout.variables['tmpk'][tstep,i,j], 
                            'K').value("F")
-        if tmpf < -50 or tmpf > 150:
+        if tmpf < -50 or tmpf > 150 or ma.is_masked(tmpf):
             continue
         o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
             tmpf, 
