@@ -230,7 +230,6 @@ def run_model(nc, initts, ncout, oldncout):
                 errorcount += 1
                 print 'bridgemodel error i:%03i j:%03i stderr:|%s|' % (i, j, 
                                                             se.strip())
-                sys.exit()
                 continue
             # Process the output file! 
             for line in open('pavetemp.out'):
