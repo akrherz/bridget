@@ -137,6 +137,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
     j = j - JOFFSET
     # Generate the rwis.txt file
     ts0 = find_initts(oldncout)
+    obs = 0
     o = open('rwis.txt', 'w')
     for tstep in range(0, len(oldncout.dimensions['time']), 4):
         ts = ts0 + datetime.timedelta(
@@ -145,15 +146,25 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
             break
         tmpf = temperature(oldncout.variables['tmpk'][tstep,i,j], 
                            'K').value("F")
-        if tmpf < -50 or tmpf > 150 or ma.is_masked(tmpf):
+        if ma.is_masked(tmpf) or tmpf < -50 or tmpf > 150 :
             continue
         o.write("%s %7.2f %7.2f %7.2f\n" % ( ts.strftime("%Y%m%d%H%M"), 
             tmpf, 
             temperature(oldncout.variables['bdeckt'][tstep,i,j], 
                         "K").value("F"), 
             (oldncout.variables['wmps'][tstep,i,j])*2.0 ) )
-    
+        obs += 1
     o.close()
+    if obs == 0:
+        print '  i=%s j=%s found no temperature data in old file' % (i,j)
+        o = open('faux_rwis.txt', 'w')
+        for hr in range(-12, 0, 1):
+            o.write("%s     %.3f      %.3f     10\n" % (
+             (initts + datetime.timedelta(hours=hr)).strftime("%Y%m%d%H%M"),
+             temperature(modeltemp, 'K').value('F') + 5, 
+             temperature(modeltemp, 'K').value('F') + 5))
+        o.close()
+        return 'faux_rwis.txt'
     return 'rwis.txt'
 
 def run_model(nc, initts, ncout, oldncout):
