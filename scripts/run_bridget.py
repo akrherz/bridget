@@ -300,7 +300,7 @@ def downsize_output(initts):
     ''' Subset the output file, so to save some space 66% actually '''
     fn1 = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
     fn2 = "output/%s_iaoutput.nc" % (initts.strftime("%Y%m%d%H%M"),)
-    fn3 = "/mesonet/share/frost/%s_iaoutput.nc" % (
+    fn3 = "/mesonet/share/frost/bridget/%s_iaoutput.nc" % (
                                                 initts.strftime("%Y%m%d%H%M"),)
     if os.path.isfile(fn2):
         os.unlink(fn2)
