@@ -46,7 +46,7 @@ def make_plots(nc):
             if pvar == 'bdeckt':
                 vals = temperature(vals, 'K').value('F')
             m.pcolormesh(lons, lats, vals, PVARS[pvar]['levels'], units='mm')
-            pqstr = "plot c %s model/frost/%02i/%s_%02i_f%03i.png bogus png" % (
+            pqstr = "plot c %s model/frost/bridget/%02i/%s_%02i_f%03i.png bogus png" % (
                                         sts.strftime("%Y%m%d%H%M"), sts.hour,
                                         pvar, sts.hour, fhour)
             m.postprocess(pqstr=pqstr)
