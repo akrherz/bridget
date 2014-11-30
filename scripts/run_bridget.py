@@ -26,6 +26,7 @@ def find_initts( nc ):
 def make_output(nc, initts):
     ''' Generate an output file to hold our results '''
     fn = 'output/%s_output.nc' % (initts.strftime("%Y%m%d%H%M"),)
+    print("run_bridget.py creating output: %s" % (fn,))
     ncout = netCDF4.Dataset(fn, 'w')
     # Setup dimensions
     ncout.createDimension('i_cross', len(nc.dimensions['i_cross']))

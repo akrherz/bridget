@@ -5,6 +5,7 @@ import netCDF4
 import sys
 import datetime
 import pytz
+import os
 from pyiem.plot import MapPlot
 from pyiem.datatypes import temperature
 import numpy as np
@@ -51,9 +52,16 @@ def make_plots(nc):
                                         pvar, sts.hour, fhour)
             m.postprocess(pqstr=pqstr)
             m.close()
+
+def main():
+    """ Do Something Fun """
+    fn = sys.argv[1]
+    if not os.path.isfile(fn):
+        print('FATAL: bridget/make_plots.py missing %s' % (fn,))
+        return
+    nc = netCDF4.Dataset(fn)
+    make_plots(nc)
                       
 if __name__ == '__main__':
     ''' See how we are called '''
-    fn = sys.argv[1]
-    nc = netCDF4.Dataset(fn)
-    make_plots(nc)
+    main()
