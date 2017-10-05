@@ -1,16 +1,16 @@
-'''
- Run the Bridge Model for each gridpoint in the given netcdf file, yeah
-'''
-import netCDF4
-import sys
-import pytz
-import datetime
-import numpy as np
-import numpy.ma as ma
-import subprocess
-from pyiem.datatypes import temperature
+"""Run the Bridge Model for each gridpoint in the given netcdf file, yeah"""
+from __future__ import print_function
 import os
 import shutil
+import sys
+import datetime
+import subprocess
+
+import pytz
+import numpy as np
+import numpy.ma as ma
+from pyiem.datatypes import temperature
+import netCDF4
 
 IOFFSET = 62
 JOFFSET = 70
@@ -158,7 +158,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
         obs += 1
     o.close()
     if obs == 0:
-        print '  i=%s j=%s found no temperature data in old file' % (i, j)
+        print('  i=%s j=%s found no temperature data in old file' % (i, j))
         o = open('faux_rwis.txt', 'w')
         for hr in range(-12, 0, 1):
             o.write("%s     %.3f      %.3f     10\n" % (
@@ -171,7 +171,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
 
 
 def run_model(nc, initts, ncout, oldncout):
-    ''' Actually run the model, please '''
+    """Actually run the model, please"""
     t2 = nc.variables['t2']
     u10 = nc.variables['u10']
     v10 = nc.variables['v10']
@@ -185,26 +185,38 @@ def run_model(nc, initts, ncout, oldncout):
     lons = nc.variables['longicrs']
 
     # keep masking in-tact as we only write data below when we have it
+    # https://github.com/numpy/numpy/blob/master/doc/release/1.11.0-notes.rst#assigning-to-slicesviews-of-maskedarray
     otmpk = ma.array(ncout.variables['tmpk'][:])
+    otmpk._sharedmask = False
     owmps = ma.array(ncout.variables['wmps'][:])
+    owmps._sharedmask = False
     oswout = ma.array(ncout.variables['swout'][:])
+    oswout._sharedmask = False
     olwout = ma.array(ncout.variables['lwout'][:])
+    olwout._sharedmask = False
     oh = ma.array(ncout.variables['h'][:])
+    oh._sharedmask = False
     olf = ma.array(ncout.variables['lf'][:])
+    olf._sharedmask = False
     obdeckt = ma.array(ncout.variables['bdeckt'][:])
+    obdeckt._sharedmask = False
     oifrost = ma.array(ncout.variables['ifrost'][:])
+    oifrost._sharedmask = False
     odwpk = ma.array(ncout.variables['dwpk'][:])
+    odwpk._sharedmask = False
     ofrostd = ma.array(ncout.variables['frostd'][:])
+    ofrostd._sharedmask = False
     oicond = ma.array(ncout.variables['icond'][:])
+    oicond._sharedmask = False
     errorcount = 0
     for i in range(len(nc.dimensions['i_cross'])):
         if errorcount > 100:
-            print 'Too many errors, aborting....'
+            print('Too many errors, aborting....')
             sys.exit()
         for j in range(len(nc.dimensions['j_cross'])):
             lat = lats[i, j]
             lon = lons[i, j]
-            '''Hey, we only care about Iowa data! -97 40 -90 43.75'''
+            # Hey, we only care about Iowa data! -97 40 -90 43.75
             if lat < 40 or lat > 43.75 or lon < -97 or lon > -90:
                 continue
             rwisfn = make_rwis(i, j, initts, oldncout, t2[1, i, j])
@@ -244,20 +256,20 @@ def run_model(nc, initts, ncout, oldncout):
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
                 if ts.minute not in (0, 15, 30, 45) or ts < initts:
                     continue
-                t = int((ts - initts).days * 1400 + (
+                tidx = int((ts - initts).days * 1400 + (
                                             (ts - initts).seconds / 60)) / 15
-                otmpk[t, i, j] = float(tokens[1])
-                owmps[t, i, j] = float(tokens[2])
-                oswout[t, i, j] = float(tokens[3])
-                olwout[t, i, j] = float(tokens[4])
-                oh[t, i, j] = float(tokens[5])
-                olf[t, i, j] = float(tokens[6])
+                otmpk[tidx, i, j] = float(tokens[1])
+                owmps[tidx, i, j] = float(tokens[2])
+                oswout[tidx, i, j] = float(tokens[3])
+                olwout[tidx, i, j] = float(tokens[4])
+                oh[tidx, i, j] = float(tokens[5])
+                olf[tidx, i, j] = float(tokens[6])
                 if tokens[7] != "nan":
-                    obdeckt[t, i, j] = float(tokens[7])
-                oifrost[t, i, j] = 1 if float(tokens[8]) > 0 else 0
-                ofrostd[t, i, j] = float(tokens[8])
-                odwpk[t, i, j] = float(tokens[9])
-                oicond[t, i, j] = CONDITIONS.index(tokens[-1].strip())
+                    obdeckt[tidx, i, j] = float(tokens[7])
+                oifrost[tidx, i, j] = 1 if float(tokens[8]) > 0 else 0
+                ofrostd[tidx, i, j] = float(tokens[8])
+                odwpk[tidx, i, j] = float(tokens[9])
+                oicond[tidx, i, j] = CONDITIONS.index(tokens[-1].strip())
 
         # loopend = datetime.datetime.now()
         # print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
@@ -285,9 +297,9 @@ def find_last_output(initts):
         ts = initts + datetime.timedelta(hours=i)
         testfn = 'output/%s_iaoutput.nc' % (ts.strftime("%Y%m%d%H%M"),)
         if os.path.isfile(testfn):
-            print '  Using %s as warmup values' % (testfn,)
+            print('  Using %s as warmup values' % (testfn,))
             return netCDF4.Dataset(testfn, 'r')
-    print 'Did not find a previous output, will use dummy RWIS data :('
+    print('Did not find a previous output, will use dummy RWIS data :(')
     return None
 
 
@@ -301,16 +313,17 @@ def downsize_output(initts):
         os.unlink(fn2)
     cmd = "ncks -d i_cross,%s,82 -d j_cross,%s,98 %s %s" % (IOFFSET, JOFFSET,
                                                             fn1, fn2)
-    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
-                         stdout=subprocess.PIPE)
-    p.stdout.read()
+    proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    proc.stdout.read()
     # Make sure fn2 exists before deleting the old one
     if os.path.isfile(fn2):
         os.unlink(fn1)
         shutil.copyfile(fn2, fn3)
 
-if __name__ == '__main__':
-    ''' Do something please '''
+
+def main():
+    """GO MAIN GO"""
     fn = sys.argv[1]
     nc = netCDF4.Dataset(fn)
 
@@ -323,3 +336,7 @@ if __name__ == '__main__':
     downsize_output(initts)
     if os.path.isfile('faux_rwis.txt'):
         os.unlink('faux_rwis.txt')
+
+
+if __name__ == '__main__':
+    main()
