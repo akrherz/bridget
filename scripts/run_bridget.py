@@ -9,8 +9,8 @@ import subprocess
 import pytz
 import numpy as np
 import numpy.ma as ma
-from pyiem.datatypes import temperature
 import netCDF4
+from pyiem.datatypes import temperature
 
 IOFFSET = 62
 JOFFSET = 70
@@ -21,7 +21,7 @@ def find_initts(nc):
     ''' Provided the given netcdf file object, figure out the start time '''
     tm = nc.variables['time']
     ts = datetime.datetime.strptime(tm.units[14:], "%Y-%m-%d %H:%M:%S")
-    ts = ts.replace(tzinfo=pytz.timezone("UTC"))
+    ts = ts.replace(tzinfo=pytz.UTC)
     return ts
 
 
@@ -241,7 +241,7 @@ def run_model(nc, initts, ncout, oldncout):
                                     shell=True,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
-            se = proc.stderr.read()
+            se = proc.stderr.read().decode('utf-8')
             if se != "":
                 errorcount += 1
                 print(('bridgemodel error i:%03i j:%03i stderr:|%s|'
@@ -256,8 +256,8 @@ def run_model(nc, initts, ncout, oldncout):
                 ts = ts.replace(tzinfo=pytz.timezone("UTC"))
                 if ts.minute not in (0, 15, 30, 45) or ts < initts:
                     continue
-                tidx = int((ts - initts).days * 1400 + (
-                                            (ts - initts).seconds / 60)) / 15
+                tidx = int(int((ts - initts).days * 1400 + (
+                                            (ts - initts).seconds / 60)) / 15)
                 otmpk[tidx, i, j] = float(tokens[1])
                 owmps[tidx, i, j] = float(tokens[2])
                 oswout[tidx, i, j] = float(tokens[3])
