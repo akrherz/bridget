@@ -302,7 +302,9 @@ def run_model(nc, initts, ncout, oldncout):
                 oifrost[tidx, i, j] = 1 if float(tokens[8]) > 0 else 0
                 ofrostd[tidx, i, j] = float(tokens[8])
                 odwpk[tidx, i, j] = float(tokens[9])
-                oicond[tidx, i, j] = CONDITIONS.index(tokens[-1].strip())
+                scond = tokens[-1].strip()
+                if scond in CONDITIONS:
+                    oicond[tidx, i, j] = CONDITIONS.index(scond)
 
         # loopend = datetime.datetime.now()
         # print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
