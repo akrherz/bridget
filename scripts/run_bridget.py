@@ -1,5 +1,4 @@
 """Run the Bridge Model for each gridpoint in the given netcdf file, yeah"""
-from __future__ import print_function
 import os
 import shutil
 import sys
@@ -11,6 +10,7 @@ import numpy as np
 import numpy.ma as ma
 import netCDF4
 from pyiem.datatypes import temperature
+from pyiem.util import LOG
 
 IOFFSET = 62
 JOFFSET = 70
@@ -18,7 +18,7 @@ CONDITIONS = ["Dry", "frosty", "Icy/Snowy", "Melting", "Freezing", "Wet"]
 
 
 def find_initts(nc):
-    """ Provided the given netcdf file object, figure out the start time """
+    """Provided the given netcdf file object, figure out the start time"""
     tm = nc.variables["time"]
     ts = datetime.datetime.strptime(tm.units[14:], "%Y-%m-%d %H:%M:%S")
     ts = ts.replace(tzinfo=pytz.UTC)
@@ -26,9 +26,9 @@ def find_initts(nc):
 
 
 def make_output(nc, initts):
-    """ Generate an output file to hold our results """
+    """Generate an output file to hold our results"""
     fn = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
-    print("run_bridget.py creating output: %s" % (fn,))
+    LOG.info("creating output: %s", fn)
     ncout = netCDF4.Dataset(fn, "w")
     # Setup dimensions
     ncout.createDimension("i_cross", len(nc.dimensions["i_cross"]))
@@ -124,21 +124,20 @@ def make_output(nc, initts):
 
 
 def make_rwis(i, j, initts, oldncout, modeltemp):
-    """ Generate spinup file """
+    """Generate spinup file"""
     if oldncout is None:
-        o = open("faux_rwis.txt", "w")
-        for hr in range(-12, 0, 1):
-            o.write(
-                "%s     %.3f      %.3f     10\n"
-                % (
-                    (initts + datetime.timedelta(hours=hr)).strftime(
-                        "%Y%m%d%H%M"
-                    ),
-                    temperature(modeltemp, "K").value("F") + 5,
-                    temperature(modeltemp, "K").value("F") + 5,
+        with open("faux_rwis.txt", "w", encoding="utf8") as fh:
+            for hr in range(-12, 0, 1):
+                fh.write(
+                    "%s     %.3f      %.3f     10\n"
+                    % (
+                        (initts + datetime.timedelta(hours=hr)).strftime(
+                            "%Y%m%d%H%M"
+                        ),
+                        temperature(modeltemp, "K").value("F") + 5,
+                        temperature(modeltemp, "K").value("F") + 5,
+                    )
                 )
-            )
-        o.close()
         return "faux_rwis.txt"
 
     i = i - IOFFSET
@@ -146,7 +145,7 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
     # Generate the rwis.txt file
     ts0 = find_initts(oldncout)
     obs = 0
-    o = open("rwis.txt", "w")
+    o = open("rwis.txt", "w", encoding="utf8")
     for tstep in range(0, len(oldncout.dimensions["time"]), 4):
         ts = ts0 + datetime.timedelta(
             minutes=int(oldncout.variables["time"][tstep])
@@ -172,20 +171,19 @@ def make_rwis(i, j, initts, oldncout, modeltemp):
         obs += 1
     o.close()
     if obs == 0:
-        print("  i=%s j=%s found no temperature data in old file" % (i, j))
-        o = open("faux_rwis.txt", "w")
-        for hr in range(-12, 0, 1):
-            o.write(
-                "%s     %.3f      %.3f     10\n"
-                % (
-                    (initts + datetime.timedelta(hours=hr)).strftime(
-                        "%Y%m%d%H%M"
-                    ),
-                    temperature(modeltemp, "K").value("F") + 5,
-                    temperature(modeltemp, "K").value("F") + 5,
+        LOG.info("  i=%s j=%s found no temperature data in old file", i, j)
+        with open("faux_rwis.txt", "w", encoding="utf8") as fh:
+            for hr in range(-12, 0, 1):
+                fh.write(
+                    "%s     %.3f      %.3f     10\n"
+                    % (
+                        (initts + datetime.timedelta(hours=hr)).strftime(
+                            "%Y%m%d%H%M"
+                        ),
+                        temperature(modeltemp, "K").value("F") + 5,
+                        temperature(modeltemp, "K").value("F") + 5,
+                    )
                 )
-            )
-        o.close()
         return "faux_rwis.txt"
     return "rwis.txt"
 
@@ -231,7 +229,7 @@ def run_model(nc, initts, ncout, oldncout):
     errorcount = 0
     for i in range(len(nc.dimensions["i_cross"])):
         if errorcount > 100:
-            print("Too many errors, aborting....")
+            LOG.info("Too many errors, aborting....")
             sys.exit()
         for j in range(len(nc.dimensions["j_cross"])):
             lat = lats[i, j]
@@ -240,7 +238,7 @@ def run_model(nc, initts, ncout, oldncout):
             if lat < 40 or lat > 43.75 or lon < -97 or lon > -90:
                 continue
             rwisfn = make_rwis(i, j, initts, oldncout, t2[1, i, j])
-            modelfp = open("modeldata.txt", "w")
+            modelfp = open("modeldata.txt", "w", encoding="utf8")
             for t in range(1, len(nc.dimensions["time"])):
                 ts = initts + datetime.timedelta(minutes=int(tm[t]))
 
@@ -270,13 +268,15 @@ def run_model(nc, initts, ncout, oldncout):
             se = proc.stderr.read().decode("utf-8")
             if se != "":
                 errorcount += 1
-                print(
-                    ("bridgemodel error i:%03i j:%03i stderr:|%s|")
-                    % (i, j, se.strip())
+                LOG.info(
+                    "bridgemodel error i:%03i j:%03i stderr:|%s|",
+                    i,
+                    j,
+                    se.strip(),
                 )
                 continue
             # Process the output file!
-            for line in open("pavetemp.out"):
+            for line in open("pavetemp.out", encoding="utf8"):
                 tokens = line.split()
                 if len(tokens) < 7:
                     continue
@@ -306,9 +306,6 @@ def run_model(nc, initts, ncout, oldncout):
                 if scond in CONDITIONS:
                     oicond[tidx, i, j] = CONDITIONS.index(scond)
 
-        # loopend = datetime.datetime.now()
-        # print '%s/%s took %.2f seconds' % (i, len(nc.dimensions['i_cross']),
-        #                                   (loopend-loopstart).seconds)
     ncout.variables["tmpk"][:] = otmpk
     ncout.variables["wmps"][:] = owmps
     ncout.variables["swout"][:] = oswout
@@ -320,26 +317,23 @@ def run_model(nc, initts, ncout, oldncout):
     ncout.variables["frostd"][:] = ofrostd
     ncout.variables["dwpk"][:] = odwpk
     ncout.variables["icond"][:] = oicond
-    # ncks -d i_cross,62,82 -d j_cross,70,98 201312131200_output.nc
-    # 201312131200_output2.nc
-    # print mini, minj, maxi, maxj #62 70 82 98
 
 
 def find_last_output(initts):
-    """ See if we have a previous run on file, that can be used to spin up
-    our current run """
+    """See if we have a previous run on file, that can be used to spin up
+    our current run"""
     for i in range(-12, -73, -12):
         ts = initts + datetime.timedelta(hours=i)
         testfn = "output/%s_iaoutput.nc" % (ts.strftime("%Y%m%d%H%M"),)
         if os.path.isfile(testfn):
-            print("  Using %s as warmup values" % (testfn,))
+            LOG.info("  Using %s as warmup values", testfn)
             return netCDF4.Dataset(testfn, "r")
-    print("Did not find a previous output, will use dummy RWIS data :(")
+    LOG.info("Did not find a previous output, will use dummy RWIS data :(")
     return None
 
 
 def downsize_output(initts):
-    """ Subset the output file, so to save some space 66% actually """
+    """Subset the output file, so to save some space 66% actually"""
     fn1 = "output/%s_output.nc" % (initts.strftime("%Y%m%d%H%M"),)
     fn2 = "output/%s_iaoutput.nc" % (initts.strftime("%Y%m%d%H%M"),)
     fn3 = "/mesonet/share/frost/bridget/%s_iaoutput.nc" % (
@@ -366,6 +360,7 @@ def downsize_output(initts):
 def main():
     """GO MAIN GO"""
     fn = sys.argv[1]
+    LOG.debug("Running for %s", fn)
     nc = netCDF4.Dataset(fn)
 
     initts = find_initts(nc)
