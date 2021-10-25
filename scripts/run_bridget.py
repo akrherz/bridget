@@ -10,8 +10,9 @@ import numpy as np
 import numpy.ma as ma
 import netCDF4
 from pyiem.datatypes import temperature
-from pyiem.util import LOG
+from pyiem.util import logger
 
+LOG = logger()
 IOFFSET = 62
 JOFFSET = 70
 CONDITIONS = ["Dry", "frosty", "Icy/Snowy", "Melting", "Freezing", "Wet"]
