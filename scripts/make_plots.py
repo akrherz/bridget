@@ -30,14 +30,14 @@ PVARS = {
 
 
 def compute_sts(nc):
-    """ Figure out the start time of this netcdf file """
+    """Figure out the start time of this netcdf file"""
     tm = nc.variables["time"].units.replace("minutes since ", "")
     dt = datetime.datetime.strptime(tm, "%Y-%m-%d %H:%M:%S")
     return dt.replace(tzinfo=pytz.timezone("UTC"))
 
 
 def make_plots(nc):
-    """ Generate some plots """
+    """Generate some plots"""
     sts = compute_sts(nc)
     lats = nc.variables["lat"][:]
     lons = nc.variables["lon"][:]
@@ -70,7 +70,7 @@ def make_plots(nc):
 
 
 def main():
-    """ Do Something Fun """
+    """Do Something Fun"""
     fn = sys.argv[1]
     if not os.path.isfile(fn):
         print("FATAL: bridget/make_plots.py missing %s" % (fn,))
@@ -80,5 +80,5 @@ def main():
 
 
 if __name__ == "__main__":
-    """ See how we are called """
+    """See how we are called"""
     main()
