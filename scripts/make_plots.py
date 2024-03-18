@@ -1,6 +1,7 @@
 """
  Generate plots from the Frost Model output!
 """
+
 import netCDF4
 import sys
 import datetime
